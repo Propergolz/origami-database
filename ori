@@ -1,0 +1,37 @@
+import requests
+from bs4 import BeautifulSoup
+import csv
+import time
+
+BASE_URL = "https://oriwiki.com/showModel.php?ModelID={}"
+OUTPUT = "oriwiki_models.csv"
+
+fields = ["ModelID", "Nombre", "Creador", "Publicacion", "Pagina", 
+          "Dificultad", "Pasos", "TipoPapel", "TieneDiagrama", "TieneCp"]
+
+with open(OUTPUT, "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=fields)
+    writer.writeheader()
+    
+    for model_id in range(1, 70000):  # rango amplio, hay huecos
+        try:
+            r = requests.get(BASE_URL.format(model_id), timeout=10)
+            if r.status_code != 200:
+                continue
+            
+            soup = BeautifulSoup(r.text, "html.parser")
+            
+            # Verificar que la página existe (tiene título de modelo)
+            title_tag = soup.find("h1") or soup.find("title")
+            if not title_tag or "not found" in title_tag.text.lower():
+                continue
+            
+            # Aquí parseas los campos — ajustar selectores tras inspeccionar el HTML real
+            row = {"ModelID": model_id, "Nombre": title_tag.text.strip()}
+            writer.writerow(row)
+            
+            time.sleep(0.3)  # respetar el servidor — ~6h para 70k IDs
+            
+        except Exception as e:
+            print(f"Error en {model_id}: {e}")
+            continue
